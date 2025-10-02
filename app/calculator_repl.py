@@ -1,63 +1,62 @@
-########################
-# Calculator REPL       #
-########################
-
 from decimal import Decimal
 import logging
 
-from app.calculator import Calculator
-from app.exceptions import OperationError, ValidationError
-from app.history import AutoSaveObserver, LoggingObserver
-from app.operations import OperationFactory
-
+# Import core modules and design pattern components
+from app.calculator import Calculator              # Facade Pattern: central interface
+from app.exceptions import OperationError, ValidationError  # Custom error types
+from app.history import AutoSaveObserver, LoggingObserver   # Observer Pattern
+from app.operations import OperationFactory        # Factory Pattern
 
 def calculator_repl():
     """
-    Command-line interface for the calculator.
+    REPL (Read-Eval-Print Loop) for the calculator with essential and enhanced commands.
 
-    Implements a Read-Eval-Print Loop (REPL) that continuously prompts the user
-    for commands, processes arithmetic operations, and manages calculation history.
+    This loop continuously prompts the user for input, interprets commands,
+    performs calculations, and manages history and memory.
     """
     try:
-        # Initialize the Calculator instance
+        # Initialize the calculator and attach observers
         calc = Calculator()
-
-        # Register observers for logging and auto-saving history
-        calc.add_observer(LoggingObserver())
-        calc.add_observer(AutoSaveObserver(calc))
+        calc.add_observer(LoggingObserver())        # Logs each calculation
+        calc.add_observer(AutoSaveObserver(calc))  # Auto-saves history to file
 
         print("Calculator started. Type 'help' for commands.")
 
+        # Aliases allow shorthand commands (e.g., 'q' for 'exit')
+        aliases = {"q": "exit", "h": "help", "m": "multiply"}
+
+        # Memory slots for storing and recalling results
+        memory = {}
+
         while True:
             try:
-                # Prompt the user for a command
+                # Get user input and resolve aliases
                 command = input("\nEnter command: ").lower().strip()
+                command = aliases.get(command, command)
 
+                # Help menu: lists available commands
                 if command == 'help':
-                    # Display available commands
                     print("\nAvailable commands:")
                     print("  add, subtract, multiply, divide, power, root - Perform calculations")
                     print("  history - Show calculation history")
                     print("  clear - Clear calculation history")
                     print("  undo - Undo the last calculation")
                     print("  redo - Redo the last undone calculation")
-                    print("  save - Save calculation history to file")
-                    print("  load - Load calculation history from file")
+                    print("  store - Store result in memory slot")
+                    print("  recall - Recall value from memory slot")
+                    print("  clear_memory - Clear all memory slots")
+                    print("  alias - Define command shortcut")
+                    print("  tutorial - Walkthrough of features")
                     print("  exit - Exit the calculator")
                     continue
 
+                # Exit command
                 if command == 'exit':
-                    # Attempt to save history before exiting
-                    try:
-                        calc.save_history()
-                        print("History saved successfully.")
-                    except Exception as e:
-                        print(f"Warning: Could not save history: {e}")
                     print("Goodbye!")
                     break
 
+                # Show calculation history
                 if command == 'history':
-                    # Display calculation history
                     history = calc.show_history()
                     if not history:
                         print("No calculations in history")
@@ -67,48 +66,59 @@ def calculator_repl():
                             print(f"{i}. {entry}")
                     continue
 
+                # Clear history
                 if command == 'clear':
-                    # Clear calculation history
                     calc.clear_history()
                     print("History cleared")
                     continue
 
+                # Undo last operation
                 if command == 'undo':
-                    # Undo the last calculation
-                    if calc.undo():
-                        print("Operation undone")
-                    else:
-                        print("Nothing to undo")
+                    print("Operation undone" if calc.undo() else "Nothing to undo")
                     continue
 
+                # Redo last undone operation
                 if command == 'redo':
-                    # Redo the last undone calculation
-                    if calc.redo():
-                        print("Operation redone")
-                    else:
-                        print("Nothing to redo")
+                    print("Operation redone" if calc.redo() else "Nothing to redo")
                     continue
 
-                if command == 'save':
-                    # Save calculation history to file
-                    try:
-                        calc.save_history()
-                        print("History saved successfully")
-                    except Exception as e:
-                        print(f"Error saving history: {e}")
+                # Store result in memory slot
+                if command == 'store':
+                    slot = input("Enter memory slot name (e.g., A): ").strip()
+                    memory[slot] = calc.last_result
+                    print(f"Stored result in slot '{slot}'")
                     continue
 
-                if command == 'load':
-                    # Load calculation history from file
-                    try:
-                        calc.load_history()
-                        print("History loaded successfully")
-                    except Exception as e:
-                        print(f"Error loading history: {e}")
+                # Recall value from memory slot
+                if command == 'recall':
+                    slot = input("Enter memory slot name to recall: ").strip()
+                    value = memory.get(slot)
+                    print(f"Value in '{slot}': {value}" if value else f"No value stored in '{slot}'")
                     continue
 
+                # Clear all memory slots
+                if command == 'clear_memory':
+                    memory.clear()
+                    print("Memory slots cleared")
+                    continue
+
+                # Define a new alias
+                if command == 'alias':
+                    shortcut = input("Enter shortcut (e.g., q): ").strip()
+                    full = input("Enter full command (e.g., exit): ").strip()
+                    aliases[shortcut] = full
+                    print(f"Alias set: '{shortcut}' → '{full}'")
+                    continue
+
+                # Interactive tutorial
+                if command == 'tutorial':
+                    print("Welcome to the calculator tutorial...")
+                    print("Try typing 'add' to begin a calculation.")
+                    print("Use 'history' to view past results, and 'undo' to reverse mistakes.")
+                    continue
+
+                # Arithmetic operations
                 if command in ['add', 'subtract', 'multiply', 'divide', 'power', 'root']:
-                    # Perform the specified arithmetic operation
                     try:
                         print("\nEnter numbers (or 'cancel' to abort):")
                         a = input("First number: ")
@@ -120,23 +130,23 @@ def calculator_repl():
                             print("Operation cancelled")
                             continue
 
-                        # Create the appropriate operation instance using the Factory pattern
+                        # Use Factory Pattern to create the correct operation
                         operation = OperationFactory.create_operation(command)
                         calc.set_operation(operation)
 
-                        # Perform the calculation
+                        # Perform the calculation using Strategy Pattern
                         result = calc.perform_operation(a, b)
 
-                        # Normalize the result if it's a Decimal
+                        # Normalize Decimal result for clean output
                         if isinstance(result, Decimal):
                             result = result.normalize()
 
+                        # Store result for memory commands
+                        calc.last_result = result
                         print(f"\nResult: {result}")
                     except (ValidationError, OperationError) as e:
-                        # Handle known exceptions related to validation or operation errors
                         print(f"Error: {e}")
                     except Exception as e:
-                        # Handle any unexpected exceptions
                         print(f"Unexpected error: {e}")
                     continue
 
@@ -144,20 +154,16 @@ def calculator_repl():
                 print(f"Unknown command: '{command}'. Type 'help' for available commands.")
 
             except KeyboardInterrupt:
-                # Handle Ctrl+C interruption gracefully
                 print("\nOperation cancelled")
                 continue
             except EOFError:
-                # Handle end-of-file (e.g., Ctrl+D) gracefully
                 print("\nInput terminated. Exiting...")
                 break
             except Exception as e:
-                # Handle any other unexpected exceptions
                 print(f"Error: {e}")
                 continue
 
     except Exception as e:
-        # Handle fatal errors during initialization
         print(f"Fatal error: {e}")
         logging.error(f"Fatal error in calculator REPL: {e}")
         raise
