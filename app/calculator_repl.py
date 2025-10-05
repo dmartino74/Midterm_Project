@@ -16,6 +16,8 @@ def calculator_repl():
         calc.add_observer(LoggingObserver())
         calc.add_observer(AutoSaveObserver(calc))
 
+        calc.last_result = None  # ✅ Ensure last_result is initialized
+
         print("Calculator started. Type 'help' for commands.")
 
         aliases = {"q": "exit", "h": "help", "m": "multiply"}
@@ -28,7 +30,7 @@ def calculator_repl():
 
                 if command == 'help':
                     print("\nAvailable commands:")
-                    print("  add, subtract, multiply, divide, power, root, mod - Perform calculations")  # ✅ Added mod
+                    print("  add, subtract, multiply, divide, power, root, mod - Perform calculations")
                     print("  history - Show calculation history")
                     print("  clear - Clear calculation history")
                     print("  undo - Undo the last calculation")
@@ -42,6 +44,7 @@ def calculator_repl():
                     continue
 
                 if command == 'exit':
+                    calc.save_history()  # ✅ Save history before exiting
                     print("Goodbye!")
                     break
 
@@ -98,7 +101,6 @@ def calculator_repl():
                     print("Use 'history' to view past results, and 'undo' to reverse mistakes.")
                     continue
 
-                # ✅ Now includes 'mod' in supported operations
                 if command in ['add', 'subtract', 'multiply', 'divide', 'power', 'root', 'mod']:
                     try:
                         print("\nEnter numbers (or 'cancel' to abort):")
