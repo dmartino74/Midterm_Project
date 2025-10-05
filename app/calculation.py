@@ -32,10 +32,11 @@ class Calculation:
             "Division": lambda x, y: x / y if y != 0 else self._raise_div_zero(),
             "Power": lambda x, y: Decimal(pow(float(x), float(y))) if y >= 0 else self._raise_neg_power(),
             "Root": lambda x, y: (
-                Decimal(pow(float(x), 1 / float(y))) 
-                if x >= 0 and y != 0 
+                Decimal(pow(float(x), 1 / float(y)))
+                if x >= 0 and y != 0
                 else self._raise_invalid_root(x, y)
-            )
+            ),
+            "Modulo": lambda x, y: x % y if y != 0 else self._raise_div_zero()  # ✅ Added Modulo
         }
 
         op = operations.get(self.operation)
@@ -149,7 +150,8 @@ class Calculation:
             "Multiplication": "\\times",
             "Division": "\\div",
             "Power": "^",
-            "Root": "\\sqrt"
+            "Root": "\\sqrt",
+            "Modulo": "\\bmod"  # ✅ Added Modulo symbol
         }
         op_symbol = symbols.get(self.operation, self.operation)
         return f"${self.operand1} {op_symbol} {self.operand2} = {self.result}$"
