@@ -211,3 +211,4 @@ def test_str_and_repr():
         f"timestamp='{calc.timestamp.isoformat()}')"
     )
     assert repr(calc) == expected_repr
+
