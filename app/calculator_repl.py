@@ -80,7 +80,7 @@ def calculator_repl():
                 if command == 'recall':
                     slot = input("Enter memory slot name to recall: ").strip()
                     value = memory.get(slot)
-                    print(f"Value in '{slot}': {value}" if value else f"No value stored in '{slot}'")
+                    print(f"Value in '{slot}': {value}" if value is not None else f"No value stored in '{slot}'")
                     continue
 
                 if command == 'clear_memory':
@@ -145,3 +145,4 @@ def calculator_repl():
         print(f"Fatal error: {e}")
         logging.error(f"Fatal error in calculator REPL: {e}")
         raise
+
