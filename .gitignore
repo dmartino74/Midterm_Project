@@ -86,3 +86,6 @@ dmypy.json
 local_settings.pyvenv/
 __pycache__/
 *.pyc
+venv/
+__pycache__/
+*.pyc
