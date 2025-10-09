@@ -83,4 +83,6 @@ dmypy.json
 .ipynb_checkpoints
 
 # Local development configuration
-local_settings.py
+local_settings.pyvenv/
+__pycache__/
+*.pyc
