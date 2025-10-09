@@ -12,7 +12,6 @@ from app.exceptions import OperationError, ValidationError
 from app.history import LoggingObserver
 from app.operations import OperationFactory
 
-# Fixture to initialize Calculator with a temporary directory for file paths
 @pytest.fixture
 def calculator():
     with TemporaryDirectory() as temp_dir:
@@ -49,6 +48,12 @@ def test_logging_setup_failure(mock_makedirs):
     with pytest.raises(OSError, match="Permission denied"):
         Calculator(config)
 
+@patch('app.calculator.Calculator._setup_directories', side_effect=OSError("Directory error"))
+def test_directory_setup_failure(mock_setup):
+    config = CalculatorConfig()
+    with pytest.raises(OSError, match="Directory error"):
+        Calculator(config)
+
 # Observer Pattern
 def test_add_observer(calculator):
     observer = LoggingObserver()
@@ -66,6 +71,16 @@ def test_remove_observer(calculator):
     calculator.add_observer(observer)
     calculator.remove_observer(observer)
     assert observer not in calculator.observers
+
+@patch('app.calculator.logging.error')
+def test_notify_observer_failure(mock_log, calculator):
+    class FailingObserver:
+        def update(self, calc): raise RuntimeError("Observer failed")
+    calculator.add_observer(FailingObserver())
+    calculator.set_operation(OperationFactory.create_operation('add'))
+    result = calculator.perform_operation(1, 1)
+    assert result == Decimal('2')
+    mock_log.assert_any_call("Observer FailingObserver failed: Observer failed")
 
 # Operation Strategy
 def test_set_operation(calculator):

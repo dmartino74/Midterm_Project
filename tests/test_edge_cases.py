@@ -61,3 +61,4 @@ def test_root_negative_even():
     op = OperationFactory.create_operation('root')
     with pytest.raises(ValidationError):
         op.execute(Decimal('-16'), Decimal('2'))
+

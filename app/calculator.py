@@ -6,16 +6,14 @@ from typing import Any, Dict, List, Optional, Union
 
 import pandas as pd
 
-# Core modules and design pattern components
 from app.calculation import Calculation
 from app.calculator_config import CalculatorConfig
 from app.calculator_memento import CalculatorMemento
 from app.exceptions import OperationError, ValidationError
 from app.history import HistoryObserver
 from app.input_validators import InputValidator
-from app.operations import Operation, OperationFactory  # Factory Pattern
+from app.operations import Operation, OperationFactory
 
-# Type aliases for clarity
 Number = Union[int, float, Decimal]
 CalculationResult = Union[Number, str]
 
@@ -29,7 +27,6 @@ class Calculator:
     """
 
     def __init__(self, config: Optional[CalculatorConfig] = None):
-        # Load default config if none provided
         if config is None:
             current_file = Path(__file__)
             project_root = current_file.parent.parent
@@ -38,20 +35,17 @@ class Calculator:
         self.config = config
         self.config.validate()
 
-        # Ensure logging directory exists
         os.makedirs(self.config.log_dir, exist_ok=True)
         self._setup_logging()
 
-        # Core state
-        self.history: List[Calculation] = []  # Stores all calculations
-        self.operation_strategy: Optional[Operation] = None  # Strategy pattern
-        self.observers: List[HistoryObserver] = []  # Observer pattern
-        self.undo_stack: List[CalculatorMemento] = []  # Memento pattern
+        self.history: List[Calculation] = []
+        self.operation_strategy: Optional[Operation] = None
+        self.observers: List[HistoryObserver] = []
+        self.undo_stack: List[CalculatorMemento] = []
         self.redo_stack: List[CalculatorMemento] = []
 
         self._setup_directories()
 
-        # Try loading saved history from CSV
         try:
             self.load_history()
         except Exception as e:
@@ -60,9 +54,6 @@ class Calculator:
         logging.info("Calculator initialized with configuration")
 
     def _setup_logging(self) -> None:
-        """
-        Configure logging to file with timestamped entries.
-        """
         try:
             os.makedirs(self.config.log_dir, exist_ok=True)
             log_file = self.config.log_file.resolve()
@@ -78,44 +69,28 @@ class Calculator:
             raise
 
     def _setup_directories(self) -> None:
-        """
-        Ensure history directory exists for saving CSV files.
-        """
         self.config.history_dir.mkdir(parents=True, exist_ok=True)
 
     def add_observer(self, observer: HistoryObserver) -> None:
-        """
-        Register an observer to be notified after each calculation.
-        """
         self.observers.append(observer)
         logging.info(f"Added observer: {observer.__class__.__name__}")
 
     def remove_observer(self, observer: HistoryObserver) -> None:
-        """
-        Unregister an observer.
-        """
         self.observers.remove(observer)
         logging.info(f"Removed observer: {observer.__class__.__name__}")
 
     def notify_observers(self, calculation: Calculation) -> None:
-        """
-        Notify all observers with the latest calculation.
-        """
         for observer in self.observers:
-            observer.update(calculation)
+            try:
+                observer.update(calculation)
+            except Exception as e:
+                logging.error(f"Observer {observer.__class__.__name__} failed: {e}")
 
     def set_operation(self, operation: Operation) -> None:
-        """
-        Set the current operation strategy (e.g., add, divide).
-        """
         self.operation_strategy = operation
         logging.info(f"Set operation: {operation}")
 
     def set_operation_by_name(self, name: str) -> None:
-        """
-        Set operation strategy by string name using OperationFactory.
-        Raises OperationError if name is invalid.
-        """
         try:
             operation = OperationFactory.create_operation(name)
             self.set_operation(operation)
@@ -123,39 +98,29 @@ class Calculator:
             raise OperationError(f"Invalid operation: {name}") from e
 
     def perform_operation(self, a: Union[str, Number], b: Union[str, Number]) -> CalculationResult:
-        """
-        Validate inputs, execute operation, update history, notify observers.
-        """
         if not self.operation_strategy:
             raise OperationError("No operation set")
 
         try:
-            # Validate and convert inputs
             validated_a = InputValidator.validate_number(a, self.config)
             validated_b = InputValidator.validate_number(b, self.config)
 
-            # Execute strategy
             result = self.operation_strategy.execute(validated_a, validated_b)
 
-            # Create Calculation object
             calculation = Calculation(
                 operation=str(self.operation_strategy),
                 operand1=validated_a,
                 operand2=validated_b
             )
 
-            # Save current state for undo
             self.undo_stack.append(CalculatorMemento(self.history.copy()))
             self.redo_stack.clear()
 
-            # Add to history
             self.history.append(calculation)
 
-            # Trim history if too long
             if len(self.history) > self.config.max_history_size:
                 self.history.pop(0)
 
-            # Notify observers
             self.notify_observers(calculation)
 
             return result
@@ -168,9 +133,6 @@ class Calculator:
             raise OperationError(f"Operation failed: {str(e)}")
 
     def save_history(self) -> None:
-        """
-        Save history to CSV using pandas.
-        """
         try:
             self.config.history_dir.mkdir(parents=True, exist_ok=True)
 
@@ -190,7 +152,6 @@ class Calculator:
                 df.to_csv(self.config.history_file, index=False)
                 logging.info(f"History saved successfully to {self.config.history_file}")
             else:
-                # Save empty CSV with headers
                 pd.DataFrame(columns=['operation', 'operand1', 'operand2', 'result', 'timestamp']
                 ).to_csv(self.config.history_file, index=False)
                 logging.info("Empty history saved")
@@ -200,9 +161,6 @@ class Calculator:
             raise OperationError(f"Failed to save history: {e}")
 
     def load_history(self) -> None:
-        """
-        Load history from CSV and reconstruct Calculation objects.
-        """
         try:
             if self.config.history_file.exists():
                 df = pd.read_csv(self.config.history_file)
@@ -227,10 +185,6 @@ class Calculator:
             raise OperationError(f"Failed to load history: {e}")
 
     def get_history_dataframe(self) -> pd.DataFrame:
-        """
-        Return history as a pandas DataFrame.
-        Useful for analysis or export.
-        """
         history_data = [
             {
                 'operation': str(calc.operation),
@@ -244,28 +198,18 @@ class Calculator:
         return pd.DataFrame(history_data)
 
     def show_history(self) -> List[str]:
-        """
-        Return history as formatted strings for display.
-        """
         return [
             f"{calc.operation}({calc.operand1}, {calc.operand2}) = {calc.result}"
             for calc in self.history
         ]
 
     def clear_history(self) -> None:
-        """
-        Clear history and undo/redo stacks.
-        """
         self.history.clear()
         self.undo_stack.clear()
         self.redo_stack.clear()
         logging.info("History cleared")
 
     def undo(self) -> bool:
-        """
-        Restore previous history state from undo stack.
-        Returns True if successful.
-        """
         if not self.undo_stack:
             return False
         memento = self.undo_stack.pop()
@@ -274,10 +218,6 @@ class Calculator:
         return True
 
     def redo(self) -> bool:
-        """
-        Reapply undone history state from redo stack.
-        Returns True if successful.
-        """
         if not self.redo_stack:
             return False
         memento = self.redo_stack.pop()
